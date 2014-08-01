@@ -289,7 +289,14 @@ ConfigManager.prototype.validate = function () {
     hasSocket = config.server && !!config.server.socket;
 
     // Check for valid server host and port values
-    if (!config.server || !(hasHostAndPort || hasSocket)) {
+    if (config.middleware) {
+        if (config.server) {
+            errors.logError(new Error('You cannot have both "middleware:true" and a "server:" configuration in config.js.'), JSON.stringify(config.server), 'Please provide them before restarting.');
+
+            return when.reject(new Error('invalid server configuration'));
+        }
+    }
+    else if (!config.server || !(hasHostAndPort || hasSocket)) {
         errors.logError(new Error('Your server values (socket, or host and port) in config.js are invalid.'), JSON.stringify(config.server), 'Please provide them before restarting.');
 
         return Promise.reject(new Error('invalid server configuration'));

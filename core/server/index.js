@@ -183,8 +183,9 @@ function init(options) {
         express['static'].mime.define({'application/font-woff': ['woff']});
 
         // enabled gzip compression by default
-        if (config.server.compress !== false) {
-            blogApp.use(compress());
+        if ((config.server && config.server.compress !== false) ||
+            (config.middleware && config.middleware.compress !== false)) {
+            server.use(compress());
         }
 
         // ## View engine

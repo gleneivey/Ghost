@@ -18,7 +18,7 @@ GhostServer.prototype.connection = function (socket) {
     this.connections.push(socket);
 };
 
-// Most browsers keep a persistant connection open to the server
+// Most browsers keep a persistent connection open to the server
 // which prevents the close callback of httpServer from returning
 // We need to destroy all connections manually
 GhostServer.prototype.closeConnections = function () {
@@ -60,14 +60,17 @@ GhostServer.prototype.logStartMessages = function () {
             process.exit(0);
         });
     } else {
-        console.log(
-            ('Ghost is running in ' + process.env.NODE_ENV + '...').green,
-            '\nListening on',
-                config.getSocket() || config.server.host + ':' + config.server.port,
-            '\nUrl configured as:',
-            config.url,
-            '\nCtrl+C to shut down'.grey
-        );
+        var message = ('Ghost is running in ' + process.env.NODE_ENV + '...').green;
+        if (!config.middleware) {
+            message += '\nListening on ' +
+                (config.getSocket() || config.server.host + ':' + config.server.port);
+        }
+        message +=
+            '\nUrl configured as: ' + config.url +
+            '\nCtrl+C to shut down'.grey;
+
+        console.log(message);
+
         // ensure that Ghost exits correctly on Ctrl+C
         process.removeAllListeners('SIGINT').on('SIGINT', function () {
             console.log(
@@ -115,30 +118,34 @@ GhostServer.prototype.start = function (externalApp) {
             );
 
             fs.chmod(config.getSocket(), '0660');
-        } else {
+        } else if (config.server) {
             self.httpServer = rootApp.listen(
                 config.server.port,
                 config.server.host
             );
         }
 
-        self.httpServer.on('error', function (error) {
-            if (error.errno === 'EADDRINUSE') {
-                console.log('ERROR: Cannot start Ghost. Another program is already using this port (is another Ghost instance already running?)'.red);
-            } else {
-                console.log(
-                    'ERROR: There was an error starting your server. '.red,
-                    ('(Code: ' + error.errno + ')').red
-                );
-            }
-            process.exit(-1);
-        });
-        self.httpServer.on('connection', self.connection.bind(self));
-        self.httpServer.on('listening', function () {
-            self.logStartMessages();
-            clearTimeout(self.upgradeWarning);
+        if (self.httpServer) {
+            self.httpServer.on('error', function (error) {
+                if (error.errno === 'EADDRINUSE') {
+                    console.log('ERROR: Cannot start Ghost. Another program is already using this port (is another Ghost instance already running?)'.red);
+                } else {
+                    console.log(
+                        'ERROR: There was an error starting your server. '.red,
+                        ('(Code: ' + error.errno + ')').red
+                    );
+                }
+                process.exit(-1);
+            });
+            self.httpServer.on('connection', self.connection.bind(self));
+            self.httpServer.on('listening', function () {
+                self.logStartMessages();
+                clearTimeout(self.upgradeWarning);
+            });
             resolve(self);
-        });
+        } else {
+            resolve(rootApp);
+        }
     });
 };
 

@@ -602,7 +602,7 @@ describe('Config', function () {
         });
 
         it('requires one of server or middleware:true to be present', function (done) {
-            overrideConfig({ server: false });
+            overrideConfig({server: false});
 
             config.load().then(function (localConfig) {
                 /*jshint unused:false*/
@@ -616,14 +616,14 @@ describe('Config', function () {
         });
 
         it('does not require server to be present if middleware:true', function (done) {
-            overrideConfig({ server: false, middleware: true });
+            overrideConfig({server: false, middleware: true});
             config.load().then(function () {
                 done();
             }).catch(done);
         });
 
         it('does not allow both server and middleware:true to be present', function (done) {
-            overrideConfig({ middleware: true });  // leave server: block from base config
+            overrideConfig({middleware: true});  // leave server: block from base config
 
             config.load().then(function () {
                 done(expectedError);

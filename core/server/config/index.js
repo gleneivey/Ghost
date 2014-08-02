@@ -39,7 +39,7 @@ function ConfigManager(config) {
 
 // Are we using sockets? Custom socket or the default?
 ConfigManager.prototype.getSocket = function () {
-    if (this._config.server.hasOwnProperty('socket')) {
+    if (this._config.server && this._config.server.hasOwnProperty('socket')) {
         return _.isString(this._config.server.socket) ?
             this._config.server.socket :
             path.join(this._config.paths.contentPath, process.env.NODE_ENV + '.socket');
@@ -293,10 +293,9 @@ ConfigManager.prototype.validate = function () {
         if (config.server) {
             errors.logError(new Error('You cannot have both "middleware:true" and a "server:" configuration in config.js.'), JSON.stringify(config.server), 'Please provide them before restarting.');
 
-            return when.reject(new Error('invalid server configuration'));
+            return Promise.reject(new Error('invalid server configuration'));
         }
-    }
-    else if (!config.server || !(hasHostAndPort || hasSocket)) {
+    } else if (!config.server || !(hasHostAndPort || hasSocket)) {
         errors.logError(new Error('Your server values (socket, or host and port) in config.js are invalid.'), JSON.stringify(config.server), 'Please provide them before restarting.');
 
         return Promise.reject(new Error('invalid server configuration'));

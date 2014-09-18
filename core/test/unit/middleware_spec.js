@@ -1,9 +1,15 @@
-/*globals describe, beforeEach, afterEach, it*/
+/*globals describe, beforeEach, afterEach, before, it*/
 /*jshint expr:true*/
 var assert          = require('assert'),
     should          = require('should'),
     sinon           = require('sinon'),
-    middleware      = require('../../server/middleware').middleware;
+    express         = require('express'),
+    rewire          = require('rewire'),
+    _               = require('lodash'),
+
+    // Stuff we are testing
+    middlewareSetup = rewire('../../server/middleware'),
+    middleware      = middlewareSetup.middleware;
 
 describe('Middleware', function () {
     // TODO: needs new test for ember admin
@@ -166,6 +172,52 @@ describe('Middleware', function () {
                 /*jshint unused:false */
                 middleware.forwardToExpressStatic.calledOnce.should.be.true;
                 assert.deepEqual(middleware.forwardToExpressStatic.args[0][0], req);
+                done();
+            });
+        });
+    });
+
+    describe('middleware', function () {
+        var sandbox, server, useSpy, error404, config;
+        before(function () {
+            config = middlewareSetup.__get__('config');
+            // restore state of config object from changes made in other tests
+            _.merge(config, config._config);
+        });
+
+        beforeEach(function () {
+            error404 = middlewareSetup.__get__('errors').error404;
+
+            sandbox = sinon.sandbox.create();
+            server = express();
+            useSpy = sandbox.stub(server, 'use');
+
+            // don't let the middlewareSetup function run stuff the test isn't set up for
+            sandbox.stub(middlewareSetup.__get__('oauth'), 'init');
+        });
+
+        afterEach(function () {
+            sandbox.restore();
+        });
+
+        describe('interpretation of generate404s key in configuration', function () {
+            it('should configure errors.error404 as middleware when config key missing', function (done) {
+                middlewareSetup(server);
+                useSpy.calledWith(error404).should.be.true;
+                done();
+            });
+
+            it('should configure errors.error404 as middleware when true', function (done) {
+                config.generate404s = true;
+                middlewareSetup(server);
+                useSpy.calledWith(error404).should.be.true;
+                done();
+            });
+
+            it('should NOT configure errors.error404 as middleware when false', function (done) {
+                config.generate404s = false;
+                middlewareSetup(server);
+                useSpy.calledWith(error404).should.be.false;
                 done();
             });
         });

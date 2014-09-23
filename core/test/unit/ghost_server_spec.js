@@ -7,7 +7,7 @@ var should          = require('should'),
     sinon           = require('sinon'),
 
     // Stuff we are testing
-    GhostServer     = rewire('../../server/GhostServer');
+    GhostServer     = rewire('../../server/ghost-server');
 
 describe('GhostServer', function () {
     function restoreConfiguration() {

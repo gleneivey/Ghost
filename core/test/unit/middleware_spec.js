@@ -178,7 +178,7 @@ describe('Middleware', function () {
     });
 
     describe('middleware', function () {
-        var sandbox, server, useSpy, error404, config;
+        var sandbox, rootServer, adminServer, useSpy, error404, config;
         before(function () {
             config = middlewareSetup.__get__('config');
             // restore state of config object from changes made in other tests
@@ -189,8 +189,9 @@ describe('Middleware', function () {
             error404 = middlewareSetup.__get__('errors').error404;
 
             sandbox = sinon.sandbox.create();
-            server = express();
-            useSpy = sandbox.stub(server, 'use');
+            rootServer = express();
+            adminServer = express();
+            useSpy = sandbox.stub(rootServer, 'use');
 
             // don't let the middlewareSetup function run stuff the test isn't set up for
             sandbox.stub(middlewareSetup.__get__('oauth'), 'init');
@@ -202,21 +203,21 @@ describe('Middleware', function () {
 
         describe('interpretation of generate404s key in configuration', function () {
             it('should configure errors.error404 as middleware when config key missing', function (done) {
-                middlewareSetup(server);
+                middlewareSetup(rootServer, adminServer);
                 useSpy.calledWith(error404).should.be.true;
                 done();
             });
 
             it('should configure errors.error404 as middleware when true', function (done) {
                 config.generate404s = true;
-                middlewareSetup(server);
+                middlewareSetup(rootServer, adminServer);
                 useSpy.calledWith(error404).should.be.true;
                 done();
             });
 
             it('should NOT configure errors.error404 as middleware when false', function (done) {
                 config.generate404s = false;
-                middlewareSetup(server);
+                middlewareSetup(rootServer, adminServer);
                 useSpy.calledWith(error404).should.be.false;
                 done();
             });

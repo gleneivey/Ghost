@@ -185,7 +185,7 @@ function init(options) {
         // enabled gzip compression by default
         if ((config.server && config.server.compress !== false) ||
             (config.middleware && config.middleware.compress !== false)) {
-            server.use(compress());
+            blogApp.use(compress());
         }
 
         // ## View engine

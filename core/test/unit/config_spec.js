@@ -604,8 +604,7 @@ describe('Config', function () {
         it('requires one of server or middleware:true to be present', function (done) {
             overrideConfig({server: false});
 
-            config.load().then(function (localConfig) {
-                /*jshint unused:false*/
+            config.load().then(function () {
                 done(expectedError);
             }).catch(function (err) {
                 should.exist(err);

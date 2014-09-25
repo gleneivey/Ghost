@@ -393,95 +393,135 @@ describe('Config', function () {
     });
 
     describe('configuration validation', function () {
-        var testConfig;
-        it('accepts urls with a valid scheme', function () {
-            var validUrls = [
+        var testConfig, serverSetup;
+
+        describe('for all server setups', function () {
+            beforeEach(function () { serverSetup = 'standalone'; });  // any valid setup value OK
+
+            describe('rejects', function () {
+                afterEach(function () {
+                    config.findErrors(testConfig, serverSetup).should.be.ok;
+                });
+
+                it('if the database config is falsy', function () {
+                    testConfig = _.extend({}, defaultConfig, {database: false});
+                });
+
+                it('if the database config is empty', function () {
+                    testConfig = _.extend({}, defaultConfig, {database: {}});
+                });
+            });
+        });
+
+        describe('for stand-alone servers', function () {
+            beforeEach(function () { serverSetup = 'standalone'; });
+
+            it('accepts urls with a valid scheme', function () {
+                var validUrls = [
                     'http://testurl.com',
                     'https://testurl.com',
                     'http://testurl.com/blog/',
                     'http://testurl.com/ghostly/'
                 ];
 
-            _.forEach(validUrls, function (url) {
-                testConfig = _.extend({}, defaultConfig, {url: url});
-                should(!!config.findErrors(testConfig)).equal(false, 'Shouldn\'t be any errors in the URL ' + url);
+                _.forEach(validUrls, function (url) {
+                    testConfig = _.extend({}, defaultConfig, {url: url});
+                    should(!!config.findErrors(testConfig, serverSetup)).equal(false, 'Shouldn\'t be any errors in the URL ' + url);
+                });
+            });
+
+            describe('rejects', function () {
+                afterEach(function () {
+                    config.findErrors(testConfig, serverSetup).should.be.ok;
+                });
+
+                it('a fqdn without a scheme', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: 'example.com'});
+                });
+
+                it('a hostname without a scheme', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: 'example'});
+                    config.findErrors(testConfig, serverSetup).should.be.ok;
+                });
+
+                it('a hostname with a scheme', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: 'https://example'});
+                });
+
+                it('a url with an unsupported scheme', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: 'ftp://example.com'});
+                });
+
+                it('a url with a protocol relative scheme', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: '//example.com'});
+                });
+
+                it('the word ghost as a url path', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: 'http://example.com/ghost/'});
+                });
+
+                it('the word ghost as a component in a url path', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: 'http://example.com/blog/ghost/'});
+                });
+
+                it('the word ghost as a component in a url path', function () {
+                    testConfig = _.extend({}, defaultConfig, {url: 'http://example.com/ghost/blog/'});
+                });
+
+                it('unless server is present', function () {
+                    testConfig = _.extend({}, defaultConfig, {server: false});
+                });
+
+                it('server if there is a host but no port', function () {
+                    testConfig = _.extend({}, defaultConfig, {server: {host: '127.0.0.1'}});
+                });
+
+                it('server if there is a port but no host', function () {
+                    testConfig = _.extend({}, defaultConfig, {server: {port: '2368'}});
+                });
+
+                it('server if configuration is empty', function () {
+                    testConfig = _.extend({}, defaultConfig, {server: {}});
+                });
+            });
+
+            describe('allows', function () {
+                afterEach(function () {
+                    should(!!config.findErrors(testConfig, serverSetup)).not.be.ok;
+                });
+
+                it('allows server to use a socket', function () {
+                    testConfig = _.extend({}, defaultConfig, {server: {socket: 'test'}});
+                });
+
+                it('allows server to have a host and a port', function () {
+                    testConfig = _.extend({}, defaultConfig, {server: {host: '127.0.0.1', port: '2368'}});
+                });
             });
         });
 
-        describe('rejects', function () {
-            afterEach(function () {
-                config.findErrors(testConfig).should.be.ok;
+        describe('for middleware servers', function () {
+            var defaultMiddlewareConfig;
+
+            beforeEach(function () {
+                serverSetup = 'middleware';
+                defaultMiddlewareConfig = {
+                    database: defaultConfig.database
+                };
             });
 
-            it('a fqdn without a scheme', function () {
-                testConfig = _.extend({}, defaultConfig, {url: 'example.com'});
-            });
+            describe('rejects', function () {
+                afterEach(function () {
+                    config.findErrors(testConfig, serverSetup).should.be.ok;
+                });
 
-            it('a hostname without a scheme', function () {
-                testConfig = _.extend({}, defaultConfig, {url: 'example'});
-                config.findErrors(testConfig).should.be.ok;
-            });
+                it('configurations that contain a "server" key', function () {
+                    testConfig = _.extend({}, defaultMiddlewareConfig, {server: {}});
+                });
 
-            it('a hostname with a scheme', function () {
-                testConfig = _.extend({}, defaultConfig, {url: 'https://example'});
-            });
-
-            it('a url with an unsupported scheme', function () {
-                testConfig = _.extend({}, defaultConfig, {url: 'ftp://example.com'});
-            });
-
-            it('a url with a protocol relative scheme', function () {
-                testConfig = _.extend({}, defaultConfig, {url: '//example.com'});
-            });
-
-            it('the word ghost as a url path', function () {
-                testConfig = _.extend({}, defaultConfig, {url: 'http://example.com/ghost/'});
-            });
-
-            it('the word ghost as a component in a url path', function () {
-                testConfig = _.extend({}, defaultConfig, {url: 'http://example.com/blog/ghost/'});
-            });
-
-            it('the word ghost as a component in a url path', function () {
-                testConfig = _.extend({}, defaultConfig, {url: 'http://example.com/ghost/blog/'});
-            });
-
-            it('if the database config is falsy', function () {
-                testConfig = _.extend({}, defaultConfig, {database: false});
-            });
-
-            it('if the database config is empty', function () {
-                testConfig = _.extend({}, defaultConfig, {database: {}});
-            });
-
-            it('unless server is present', function () {
-                testConfig = _.extend({}, defaultConfig, {server: false});
-            });
-
-            it('server if there is a host but no port', function () {
-                testConfig = _.extend({}, defaultConfig, {server: {host: '127.0.0.1'}});
-            });
-
-            it('server if there is a port but no host', function () {
-                testConfig = _.extend({}, defaultConfig, {server: {port: '2368'}});
-            });
-
-            it('server if configuration is empty', function () {
-                testConfig = _.extend({}, defaultConfig, {server: {}});
-            });
-        });
-
-        describe('allows', function () {
-            afterEach(function () {
-                should(!!config.findErrors(testConfig)).not.be.ok;
-            });
-
-            it('allows server to use a socket', function () {
-                testConfig = _.extend({}, defaultConfig, {server: {socket: 'test'}});
-            });
-
-            it('allows server to have a host and a port', function () {
-                testConfig = _.extend({}, defaultConfig, {server: {host: '127.0.0.1', port: '2368'}});
+                it('configurations that contain a "url" key', function () {
+                    testConfig = _.extend({}, defaultMiddlewareConfig, {url: 'scheme:host/path'});
+                });
             });
         });
     });

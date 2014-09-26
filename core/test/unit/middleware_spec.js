@@ -1,174 +1,38 @@
-/*globals describe, beforeEach, afterEach, it*/
+/*globals describe, it */
 /*jshint expr:true*/
-var assert          = require('assert'),
-    should          = require('should'),
-    sinon           = require('sinon'),
-    middleware      = require('../../server/middleware').middleware;
+var should          = require('should'),
+//    sinon           = require('sinon'),
+    rewire          = require('rewire'),
 
-describe('Middleware', function () {
-    // TODO: needs new test for ember admin
-    // describe('redirectToDashboard', function () {
-    //     var req, res;
+    // Thing we are testing
+    middleware      = rewire('../../server/middleware');
 
-    //     beforeEach(function () {
-    //         req = {
-    //             session: {}
-    //         };
+// To stop jshint complaining
+should.equal(true, true);
 
-    //         res = {
-    //             redirect: sinon.spy()
-    //         };
-    //     });
+describe('Express middleware module', function () {
+    var defaultConfig = {
+        database: {client: 'sqlite3'}
+    };
 
-    //     it('should redirect to dashboard', function () {
-    //         req.session.user = {};
+    function shouldBeAnInstanceOfExpress(express) {
+        // first-order duck typing for an express server
+        express.should.be.a.function;
+        express.length.should.equal(3, 'a real express server function has an arity of 3');
+        express.request.should.be.an.object;
+        express.response.should.be.an.object;
+    }
 
-    //         middleware.redirectToDashboard(req, res, null);
-    //         assert(res.redirect.calledWithMatch('/ghost/'));
-    //     });
-
-    //     it('should call next if no user in session', function (done) {
-    //         middleware.redirectToDashboard(req, res, function (a) {
-    //             should.not.exist(a);
-    //             assert(res.redirect.calledOnce.should.be.false);
-    //             done();
-    //         });
-    //     });
-    // });
-
-    describe('cacheControl', function () {
-        var res;
-
-        beforeEach(function () {
-            res = {
-                set: sinon.spy()
-            };
-        });
-
-        it('correctly sets the public profile headers', function (done) {
-            middleware.cacheControl('public')(null, res, function (a) {
-                should.not.exist(a);
-                res.set.calledOnce.should.be.true;
-                res.set.calledWith({'Cache-Control': 'public, max-age=0'});
-                done();
-            });
-        });
-
-        it('correctly sets the private profile headers', function (done) {
-            middleware.cacheControl('private')(null, res, function (a) {
-                should.not.exist(a);
-                res.set.calledOnce.should.be.true;
-                res.set.calledWith({
-                    'Cache-Control':
-                        'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0'
-                });
-                done();
-            });
-        });
-
-        it('will not set headers without a profile', function (done) {
-            middleware.cacheControl()(null, res, function (a) {
-                should.not.exist(a);
-                res.set.called.should.be.false;
-                done();
-            });
-        });
+    it('returns an Express server instance when called', function () {
+        shouldBeAnInstanceOfExpress(middleware(defaultConfig));
     });
 
-    describe('whenEnabled', function () {
-        var cbFn, blogApp;
+    it('fails if it is given a bad configuration', function () {
+        function createMiddlewareWithBadConfiguration() {
+            return middleware({});
+        }
 
-        beforeEach(function () {
-            cbFn = sinon.spy();
-            blogApp = {
-                enabled: function (setting) {
-                    if (setting === 'enabled') {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-            };
-            middleware.cacheBlogApp(blogApp);
-        });
-
-        it('should call function if setting is enabled', function (done) {
-            var req = 1, res = 2, next = 3;
-
-            middleware.whenEnabled('enabled', function (a, b, c) {
-                assert.equal(a, 1);
-                assert.equal(b, 2);
-                assert.equal(c, 3);
-                done();
-            })(req, res, next);
-        });
-
-        it('should call next() if setting is disabled', function (done) {
-            middleware.whenEnabled('rando', cbFn)(null, null, function (a) {
-                should.not.exist(a);
-                cbFn.calledOnce.should.be.false;
-                done();
-            });
-        });
-    });
-
-    describe('staticTheme', function () {
-        beforeEach(function () {
-            sinon.stub(middleware, 'forwardToExpressStatic').yields();
-        });
-
-        afterEach(function () {
-            middleware.forwardToExpressStatic.restore();
-        });
-
-        it('should call next if hbs file type', function (done) {
-            var req = {
-                url: 'mytemplate.hbs'
-            };
-
-            middleware.staticTheme(null)(req, null, function (a) {
-                should.not.exist(a);
-                middleware.forwardToExpressStatic.calledOnce.should.be.false;
-                done();
-            });
-        });
-
-        it('should call next if md file type', function (done) {
-            var req = {
-                url: 'README.md'
-            };
-
-            middleware.staticTheme(null)(req, null, function (a) {
-                should.not.exist(a);
-                middleware.forwardToExpressStatic.calledOnce.should.be.false;
-                done();
-            });
-        });
-
-        it('should call next if json file type', function (done) {
-            var req = {
-                url: 'sample.json'
-            };
-
-            middleware.staticTheme(null)(req, null, function (a) {
-                should.not.exist(a);
-                middleware.forwardToExpressStatic.calledOnce.should.be.false;
-                done();
-            });
-        });
-
-        it('should call express.static if valid file type', function (done) {
-            var req = {
-                    url: 'myvalidfile.css'
-                };
-
-            middleware.staticTheme(null)(req, null, function (reqArg, res, next) {
-                /*jshint unused:false */
-                middleware.forwardToExpressStatic.calledOnce.should.be.true;
-                assert.deepEqual(middleware.forwardToExpressStatic.args[0][0], req);
-                done();
-            });
-        });
+        createMiddlewareWithBadConfiguration.should.throw('invalid database configuration');
     });
 
     describe('isSSLRequired', function () {

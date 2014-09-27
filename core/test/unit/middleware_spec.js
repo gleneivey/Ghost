@@ -1,8 +1,9 @@
-/*globals describe, it */
+/*globals describe, it, beforeEach */
 /*jshint expr:true*/
 var should          = require('should'),
-//    sinon           = require('sinon'),
+    _               = require('lodash'),
     rewire          = require('rewire'),
+    GhostServer     = require('../../server/ghost-server'),
 
     // Thing we are testing
     middleware      = rewire('../../server/middleware');
@@ -15,6 +16,14 @@ describe('Express middleware module', function () {
         database: {client: 'sqlite3'}
     };
 
+    function cleanOutConfigManager() {
+        var middlewaresConfig = middleware.__get__('config');
+        _(_.keys(middlewaresConfig._config)).each(function (key) {
+            delete middlewaresConfig[key];
+        });
+        middlewaresConfig._config = {};
+    }
+
     function shouldBeAnInstanceOfExpress(express) {
         // first-order duck typing for an express server
         express.should.be.a.function;
@@ -23,8 +32,26 @@ describe('Express middleware module', function () {
         express.response.should.be.an.object;
     }
 
+    beforeEach(function () {
+        cleanOutConfigManager();
+    });
+
     it('returns an Express server instance when called', function () {
         shouldBeAnInstanceOfExpress(middleware(defaultConfig));
+    });
+
+    it('extends the middleware instance to provide access to Ghost\'s initialization promise', function () {
+        middleware(defaultConfig).getGhostPromise.should.be.a.Function;
+    });
+
+    it('asynchronously initializes the middleware', function (done) {
+        var ghostInitializationPromise = middleware(defaultConfig).getGhostPromise();
+        ghostInitializationPromise.then(function (ghostServerInstance) {
+            ghostServerInstance.should.be.an.instanceOf(GhostServer);
+            done();
+        }).catch(function (error) {
+            error.should.be.null;
+        });
     });
 
     it('fails if it is given a bad configuration', function () {

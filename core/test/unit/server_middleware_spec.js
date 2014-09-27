@@ -3,7 +3,9 @@
 var assert          = require('assert'),
     should          = require('should'),
     sinon           = require('sinon'),
-    middleware      = require('../../server/middleware/index').middleware;
+    rewire          = require('rewire'),
+    setupMiddleware = rewire('../../server/middleware/index'),
+    middleware      = setupMiddleware.middleware;
 
 describe('Middleware', function () {
     // TODO: needs new test for ember admin
@@ -167,6 +169,45 @@ describe('Middleware', function () {
                 middleware.forwardToExpressStatic.calledOnce.should.be.true;
                 assert.deepEqual(middleware.forwardToExpressStatic.args[0][0], req);
                 done();
+            });
+        });
+    });
+
+    describe('checkSSL middleware', function () {
+        var checkSSL = middleware.checkSSL,
+            redirectCalled, nextCalled,
+            mockResponse,
+            nextFunction = function () { nextCalled = true; };
+
+        beforeEach(function () {
+            redirectCalled = nextCalled = false;
+            mockResponse = {
+                redirect: function () { redirectCalled = true; }
+            };
+        });
+
+        it('passes the request on if it receives an HTTPS request', function () {
+            var mockRequest = {secure: true};
+            checkSSL(mockRequest, mockResponse, nextFunction);
+            nextCalled.should.be.true;
+            redirectCalled.should.be.false;
+        });
+
+        describe('receiving a non-SSL request', function () {
+            var mockRequest = {secure: false};
+
+            it('redirects to HTTPS if it is configured with an "https" url', function () {
+                setupMiddleware.__get__('config').url = 'https://127.0.0.1:2369';
+                checkSSL(mockRequest, mockResponse, nextFunction);
+                nextCalled.should.be.false;
+                redirectCalled.should.be.true;
+            });
+
+            it('passes the request on if there is no "url" in the configuration', function () {
+                delete setupMiddleware.__get__('config').url;
+                checkSSL(mockRequest, mockResponse, nextFunction);
+                nextCalled.should.be.true;
+                redirectCalled.should.be.false;
             });
         });
     });

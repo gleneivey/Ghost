@@ -21,6 +21,7 @@ var api            = require('../api'),
     oauth          = require('./oauth'),
     oauth2orize    = require('oauth2orize'),
     authStrategies = require('./auth-strategies'),
+    url         = require('url'),
     utils          = require('../utils'),
     sitemapHandler = require('../data/sitemap/handler'),
 
@@ -160,6 +161,46 @@ function uncapitalise(req, res, next) {
     } else {
         next();
     }
+}
+
+function isSSLrequired(isAdmin) {
+    if (!config.url) {
+        return false;
+    }
+
+    var forceSSL = url.parse(config.url).protocol === 'https:' ? true : false,
+        forceAdminSSL = (isAdmin && config.forceAdminSSL);
+    if (forceSSL || forceAdminSSL) {
+        return true;
+    }
+    return false;
+}
+
+// Check to see if we should use SSL
+// and redirect if needed
+function checkSSL(req, res, next) {
+    if (isSSLrequired(res.isAdmin)) {
+        if (!req.secure) {
+            var forceAdminSSL = config.forceAdminSSL,
+                redirectUrl;
+
+            // Check if forceAdminSSL: { redirect: false } is set, which means
+            // we should just deny non-SSL access rather than redirect
+            if (forceAdminSSL && forceAdminSSL.redirect !== undefined && !forceAdminSSL.redirect) {
+                return res.sendStatus(403);
+            }
+
+            redirectUrl = url.parse(config.urlSSL || config.url);
+            return res.redirect(301, url.format({
+                protocol: 'https:',
+                hostname: redirectUrl.hostname,
+                port: redirectUrl.port,
+                pathname: req.path,
+                query: req.query
+            }));
+        }
+    }
+    next();
 }
 
 // ### ServeSharedFile Middleware
@@ -310,5 +351,7 @@ setupMiddleware = function (blogAppInstance, adminApp) {
 module.exports = setupMiddleware;
 // Export middleware functions directly
 module.exports.middleware = middleware;
+
 // Expose middleware functions in this file as well
 module.exports.middleware.redirectToSetup = redirectToSetup;
+module.exports.middleware.checkSSL = checkSSL;

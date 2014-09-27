@@ -1,17 +1,28 @@
-var express = require('express'),
-    config = require('./config');
+var
+//    express = require('express'),
+//    Promise = require('bluebird'),
+    config = require('./config'),
+    ghost = require('./index');
 
 function buildServer(configValues) {
-    var ghostMiddleware, message,
-        promise = config.init(configValues, 'middleware');
+    var setupResults, message,
+        promise = config.init(configValues, 'middleware'),
+        ghostPromise, middlewareInstance;
+
     if (promise.isRejected()) {
         message = promise.reason();
         promise.catch(function () {});  // silence "Possibly unhandled" warnings
         throw message;
     }
 
-    ghostMiddleware = express();
-    return ghostMiddleware;
+    setupResults = ghost.setupMiddleware(promise);
+    ghostPromise = setupResults[0];
+    middlewareInstance = setupResults[1];
+    middlewareInstance.getGhostPromise = function () {
+        return ghostPromise;
+    };
+
+    return middlewareInstance;
 }
 
 module.exports = buildServer;

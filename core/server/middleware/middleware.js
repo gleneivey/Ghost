@@ -303,28 +303,6 @@ middleware = {
         return oauthServer.token()(req, res, next);
     },
 
-    // Check to see if we should use SSL
-    // and redirect if needed
-    checkSSL: function (req, res, next) {
-        if (isSSLrequired(res.isAdmin, config.url, config.forceAdminSSL)) {
-            if (!req.secure) {
-                var response = sslForbiddenOrRedirect({
-                    forceAdminSSL: config.forceAdminSSL,
-                    configUrlSSL: config.urlSSL,
-                    configUrl: config.url,
-                    reqUrl: req.url
-                });
-
-                if (response.isForbidden) {
-                    return res.sendStatus(403);
-                } else {
-                    return res.redirect(301, response.redirectUrl(req.query));
-                }
-            }
-        }
-        next();
-    },
-
     busboy: busboy
 };
 

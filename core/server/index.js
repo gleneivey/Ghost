@@ -124,22 +124,13 @@ function initNotifications() {
     }
 }
 
-// ## Initializes the ghost application.
-// Sets up the express server instance.
-// Instantiates the ghost singleton, helpers, routes, middleware, and apps.
-// Finally it returns an instance of GhostServer
-function init(options) {
+function setupFromConfigPromise(configurationPromise) {
     // Get reference to an express app instance.
-    var blogApp = express(),
+    var serverPromise,
+        blogApp = express(),
         adminApp = express();
 
-    // ### Initialisation
-    // The server and its dependencies require a populated config
-    // It returns a promise that is resolved when the application
-    // has finished starting up.
-
-    // Load our config.js file from the local file system.
-    return config.load(options.config).then(function () {
+    serverPromise = configurationPromise.then(function () {
         return config.checkDeprecated();
     }).then(function () {
         // Make sure javascript files have been built via grunt concat
@@ -176,14 +167,16 @@ function init(options) {
 
         // Output necessary notifications on init
         initNotifications();
-        // ##Configuration
 
+        // ##Configuration
         // return the correct mime type for woff filess
         express['static'].mime.define({'application/font-woff': ['woff']});
 
-        // enabled gzip compression by default
-        if (config.server.compress !== false) {
-            blogApp.use(compress());
+        if (config.server) {
+            // enabled gzip compression by default
+            if (config.server.compress !== false) {
+                blogApp.use(compress());
+            }
         }
 
         // ## View engine
@@ -211,6 +204,25 @@ function init(options) {
 
         return new GhostServer(blogApp);
     });
+
+    return [serverPromise, blogApp];
+}
+
+// ## Initializes the ghost application.
+// Sets up the express server instance.
+// Instantiates the ghost singleton, helpers, routes, middleware, and apps.
+// Finally it returns an instance of GhostServer
+function init(options) {
+    // ### Initialisation
+    // The server and its dependencies require a populated config
+    // It returns a promise that is resolved when the application
+    // has finished starting up.
+
+    // Load our config.js file from the local file system.
+    return setupFromConfigPromise(
+        config.load(options.config)
+    )[0];
 }
 
 module.exports = init;
+module.exports.setupMiddleware = setupFromConfigPromise;

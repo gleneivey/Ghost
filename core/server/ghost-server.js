@@ -10,7 +10,10 @@ function GhostServer(rootApp) {
     this.httpServer = null;
     this.connections = {};
     this.connectionId = 0;
-    this.upgradeWarning = setTimeout(this.logUpgradeWarning.bind(this), 5000);
+
+    if (config.server) {
+        this.upgradeWarning = setTimeout(this.logUpgradeWarning.bind(this), 5000);
+    }
 
     // Expose config module for use externally.
     this.config = config;

@@ -32,16 +32,33 @@ describe('Express middleware module', function () {
         express.response.should.be.an.object;
     }
 
+    // alternatively we could stub server/index#setupFromConfigPromise or there-abouts, but
+    //   for just two tests, the performance gain doesn't seem worth the loss of coverage
+    function waitForTheConfigurationPromiseToResolve(middlewareInstance, done) {
+        var promise = middlewareInstance.getGhostPromise();
+        promise.then(function () {
+            done();
+        }).catch(function (error) {
+            error.should.equal('In this test, the promise should never be rejected.');
+        });
+    }
+
     beforeEach(function () {
         cleanOutConfigManager();
     });
 
-    it('returns an Express server instance when called', function () {
-        shouldBeAnInstanceOfExpress(middleware(defaultConfig));
+    it('returns an Express server instance when called', function (done) {
+        var middlewareInstance = middleware(defaultConfig);
+        shouldBeAnInstanceOfExpress(middlewareInstance);
+
+        waitForTheConfigurationPromiseToResolve(middlewareInstance, done);
     });
 
-    it('extends the middleware instance to provide access to Ghost\'s initialization promise', function () {
-        middleware(defaultConfig).getGhostPromise.should.be.a.Function;
+    it('extends the middleware instance to provide access to Ghost\'s initialization promise', function (done) {
+        var middlewareInstance = middleware(defaultConfig);
+        middlewareInstance.getGhostPromise.should.be.a.Function;
+
+        waitForTheConfigurationPromiseToResolve(middlewareInstance, done);
     });
 
     it('asynchronously initializes the middleware', function (done) {

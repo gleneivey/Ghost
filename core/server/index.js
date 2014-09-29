@@ -124,6 +124,12 @@ function initNotifications() {
     }
 }
 
+// ## Initializes the ghost application.
+// * Takes a promise that will resolve when the config object is loaded
+// * Sets up the express server instance.
+// * Instantiates the ghost singleton, helpers, routes, middleware, and apps.
+// * It returns an array containing a promise for an instance of GhostServer and
+// the not-yet-configured top-level (blogApp) Express server instance.
 function setupFromConfigPromise(configurationPromise) {
     // Get reference to an express app instance.
     var serverPromise,
@@ -208,18 +214,13 @@ function setupFromConfigPromise(configurationPromise) {
     return [serverPromise, blogApp];
 }
 
-// ## Initializes the ghost application.
-// Sets up the express server instance.
-// Instantiates the ghost singleton, helpers, routes, middleware, and apps.
-// Finally it returns an instance of GhostServer
+// ## Initialize from a configuration file
 function init(options) {
-    // ### Initialisation
-    // The server and its dependencies require a populated config
     // It returns a promise that is resolved when the application
     // has finished starting up.
-
-    // Load our config.js file from the local file system.
     return setupFromConfigPromise(
+        // The server and its dependencies require a populated config
+        // Load our config.js file from the local file system.
         config.load(options.config)
     )[0];
 }

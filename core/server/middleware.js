@@ -1,7 +1,4 @@
-var
-//    express = require('express'),
-//    Promise = require('bluebird'),
-    config = require('./config'),
+var config = require('./config'),
     ghost = require('./index');
 
 function buildServer(configValues) {

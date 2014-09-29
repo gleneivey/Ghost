@@ -327,11 +327,11 @@ describe('Config', function () {
         });
 
         it('creates the config file if one does not exist', function (done) {
-            // trick bootstrap into thinking that the config file doesn't exist yet
+                // trick bootstrap into thinking that the config file doesn't exist yet
             var existsStub = sandbox.stub(fs, 'exists', function (file, cb) {
                     return cb(false);
                 }),
-            // ensure that the file creation is a stub, the tests shouldn't really create a file
+                // ensure that the file creation is a stub, the tests shouldn't really create a file
                 writeFileStub = sandbox.stub(config, 'writeFile').returns(Promise.resolve());
             readFileStub.returns(defaultConfig);
 

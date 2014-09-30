@@ -1,9 +1,12 @@
 /*globals describe, beforeEach, afterEach, it*/
 /*jshint expr:true*/
-var assert          = require('assert'),
+var express         = require('express'),
+    assert          = require('assert'),
     should          = require('should'),
     sinon           = require('sinon'),
     rewire          = require('rewire'),
+
+    // Thing we are testing
     setupMiddleware = rewire('../../server/middleware/index'),
     middleware      = setupMiddleware.middleware;
 
@@ -37,6 +40,32 @@ describe('Middleware', function () {
     //         });
     //     });
     // });
+
+    describe('setup of Ghost\'s middleware components', function () {
+        describe('when Ghost is used as an Express middleware component itself', function () {
+            beforeEach(function () {
+                sinon.stub(setupMiddleware.__get__('oauth'), 'init');  // would need lots more setup to run in tests
+                delete setupMiddleware.__get__('config').server;
+            });
+
+            it('installs setSubdirPath as the very first middleware used', function () {
+                var error,
+                    blogApp = express(),
+                    shortCircuit = 'don\'t bother finishing initialization in this test';
+                sinon.stub(blogApp, 'use').throws(shortCircuit);
+
+                try {
+                    setupMiddleware(blogApp, express());
+                } catch (e) {
+                    error = e;
+                }
+
+                error.name.should.equal(shortCircuit);
+                blogApp.use.calledOnce.should.be.true;
+                blogApp.use.args[0][0].should.equal(middleware.setSubdirPath);
+            });
+        });
+    });
 
     describe('cacheControl', function () {
         var res;
@@ -209,6 +238,36 @@ describe('Middleware', function () {
                 nextCalled.should.be.true;
                 redirectCalled.should.be.false;
             });
+        });
+    });
+
+    describe('setSubdirPath middleware', function () {
+        var setSubdirPath, nextStub, config;
+
+        beforeEach(function () {
+            setSubdirPath = middleware.setSubdirPath;
+            nextStub = sinon.stub();
+            config = setupMiddleware.__get__('config');
+        });
+
+        afterEach(function () {
+            nextStub.called.should.be.true;
+        });
+
+        it('copies from blogApp.mountpath to config.paths.subdir', function () {
+            var newPath = '/our/site/blog';
+
+            setupMiddleware.__set__('blogApp', {mountpath: newPath});
+            config.paths.subdir.should.not.equal(newPath);
+
+            setSubdirPath({}, {}, nextStub);
+            config.paths.subdir.should.equal(newPath);
+        });
+
+        it('makes subdir empty if the mountpath is root', function () {
+            setupMiddleware.__set__('blogApp', {mountpath: '/'});
+            setSubdirPath({}, {}, nextStub);
+            config.paths.subdir.should.equal('');
         });
     });
 });

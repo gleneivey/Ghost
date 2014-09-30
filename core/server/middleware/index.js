@@ -242,6 +242,13 @@ function serveSharedFile(file, type, maxAge) {
     };
 }
 
+function setSubdirPath(req, res, next) {
+    var path = blogApp.mountpath;
+    path = (path === '/') ? '' : path;
+    config.paths.subdir = path;
+    next();
+}
+
 setupMiddleware = function (blogAppInstance, adminApp) {
     var logging = config.logging,
         corePath = config.paths.corePath,
@@ -259,6 +266,10 @@ setupMiddleware = function (blogAppInstance, adminApp) {
     // Make sure 'req.secure' is valid for proxied requests
     // (X-Forwarded-Proto header will be checked, if present)
     blogApp.enable('trust proxy');
+
+    if (!config.server) {
+        blogApp.use(setSubdirPath);
+    }
 
     // Logging configuration
     if (logging !== false) {
@@ -355,3 +366,4 @@ module.exports.middleware = middleware;
 // Expose middleware functions in this file as well
 module.exports.middleware.redirectToSetup = redirectToSetup;
 module.exports.middleware.checkSSL = checkSSL;
+module.exports.middleware.setSubdirPath = setSubdirPath;

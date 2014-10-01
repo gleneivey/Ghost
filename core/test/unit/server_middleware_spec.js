@@ -44,12 +44,17 @@ describe('Middleware', function () {
     // });
 
     describe('setupMiddleware', function () {
+        var config;
+
+        beforeEach(function () {
+            config = setupMiddleware.__get__('config');
+            config.set(_.merge({}, defaultConfig));      // isolate us from previously-run unit test file(s)
+        });
+
         describe('when Ghost is used as an Express middleware component itself', function () {
-            var sandbox, useStub, blogApp, adminApp, config, error404, error500;
+            var sandbox, useStub, blogApp, adminApp, error404, error500;
 
             beforeEach(function () {
-                config = setupMiddleware.__get__('config');
-                config.set(_.merge({}, defaultConfig));      // isolate us from previously-run unit test file(s)
                 delete config.server;                        // be middleware
 
                 blogApp = express();
@@ -66,7 +71,7 @@ describe('Middleware', function () {
                 sandbox.restore();
             });
 
-            it('installs setSubdirPath as the very first middleware used', function () {
+            it('installs setPathsFromMountpath as the very first middleware used', function () {
                 var error,
                     shortCircuit = 'don\'t bother finishing initialization in this test';
                 useStub.throws(shortCircuit);
@@ -79,7 +84,7 @@ describe('Middleware', function () {
 
                 error.name.should.equal(shortCircuit);
                 useStub.calledOnce.should.be.true;
-                useStub.args[0][0].should.equal(middleware.setSubdirPath);
+                useStub.args[0][0].should.equal(middleware.setPathsFromMountpath);
             });
 
             describe('handles generate404s in the config', function () {
@@ -302,11 +307,11 @@ describe('Middleware', function () {
         });
     });
 
-    describe('setSubdirPath middleware', function () {
-        var setSubdirPath, nextStub, config;
+    describe('setPathsFromMountpath middleware', function () {
+        var setPathsFromMountpath, nextStub, config;
 
         beforeEach(function () {
-            setSubdirPath = middleware.setSubdirPath;
+            setPathsFromMountpath = middleware.setPathsFromMountpath;
             nextStub = sinon.stub();
             config = setupMiddleware.__get__('config');
         });
@@ -321,15 +326,16 @@ describe('Middleware', function () {
             setupMiddleware.__set__('blogApp', {mountpath: newPath});
             config.paths.subdir.should.not.equal(newPath);
 
-            setSubdirPath({}, {}, nextStub);
+            setPathsFromMountpath({}, {}, nextStub);
             config.paths.subdir.should.equal(newPath);
+            config.theme.url.should.equal(newPath);
             config.url.should.equal(newPath);
             config._config.url.should.equal(newPath);
         });
 
         it('makes subdir empty if the mountpath is root', function () {
             setupMiddleware.__set__('blogApp', {mountpath: '/'});
-            setSubdirPath({}, {}, nextStub);
+            setPathsFromMountpath({}, {}, nextStub);
             config.paths.subdir.should.equal('');
         });
     });

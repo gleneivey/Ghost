@@ -242,12 +242,13 @@ function serveSharedFile(file, type, maxAge) {
     };
 }
 
-function setSubdirPath(req, res, next) {
+function setPathsFromMountpath(req, res, next) {
     var path = blogApp.mountpath;
     path = (path === '/') ? '' : path;
     config._config.url = path;
     config.url = path;
     config.paths.subdir = path;
+    config.theme.url = path;
     next();
 }
 
@@ -270,7 +271,7 @@ setupMiddleware = function (blogAppInstance, adminApp) {
     blogApp.enable('trust proxy');
 
     if (!config.server) {
-        blogApp.use(setSubdirPath);
+        blogApp.use(setPathsFromMountpath);
     }
 
     // Logging configuration
@@ -372,4 +373,4 @@ module.exports.middleware = middleware;
 // Expose middleware functions in this file as well
 module.exports.middleware.redirectToSetup = redirectToSetup;
 module.exports.middleware.checkSSL = checkSSL;
-module.exports.middleware.setSubdirPath = setSubdirPath;
+module.exports.middleware.setPathsFromMountpath = setPathsFromMountpath;

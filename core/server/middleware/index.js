@@ -245,6 +245,8 @@ function serveSharedFile(file, type, maxAge) {
 function setSubdirPath(req, res, next) {
     var path = blogApp.mountpath;
     path = (path === '/') ? '' : path;
+    config._config.url = path;
+    config.url = path;
     config.paths.subdir = path;
     next();
 }

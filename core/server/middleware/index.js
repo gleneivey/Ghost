@@ -355,10 +355,14 @@ setupMiddleware = function (blogAppInstance, adminApp) {
 
     // ### Error handling
     // 404 Handler
-    blogApp.use(errors.error404);
+    if (config.generate404s !== false) {
+        blogApp.use(errors.error404);
+    }
 
     // 500 Handler
-    blogApp.use(errors.error500);
+    if (config.generate500s !== false) {
+        blogApp.use(errors.error500);
+    }
 };
 
 module.exports = setupMiddleware;

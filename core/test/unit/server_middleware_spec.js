@@ -5,6 +5,8 @@ var express         = require('express'),
     should          = require('should'),
     sinon           = require('sinon'),
     rewire          = require('rewire'),
+    _               = require('lodash'),
+    defaultConfig   = require('../../../config.example')[process.env.NODE_ENV],
 
     // Thing we are testing
     setupMiddleware = rewire('../../server/middleware/index'),
@@ -41,28 +43,87 @@ describe('Middleware', function () {
     //     });
     // });
 
-    describe('setup of Ghost\'s middleware components', function () {
+    describe('setupMiddleware', function () {
         describe('when Ghost is used as an Express middleware component itself', function () {
+            var sandbox, useStub, blogApp, adminApp, config, error404, error500;
+
             beforeEach(function () {
-                sinon.stub(setupMiddleware.__get__('oauth'), 'init');  // would need lots more setup to run in tests
-                delete setupMiddleware.__get__('config').server;
+                config = setupMiddleware.__get__('config');
+                config.set(_.merge({}, defaultConfig));      // isolate us from previously-run unit test file(s)
+                delete config.server;                        // be middleware
+
+                blogApp = express();
+                adminApp = express();
+                error404 = setupMiddleware.__get__('errors').error404;
+                error500 = setupMiddleware.__get__('errors').error500;
+
+                sandbox = sinon.sandbox.create();
+                useStub = sandbox.stub(blogApp, 'use');
+                sandbox.stub(setupMiddleware.__get__('oauth'), 'init');  // would need lots more setup to run in tests
+            });
+
+            afterEach(function () {
+                sandbox.restore();
             });
 
             it('installs setSubdirPath as the very first middleware used', function () {
                 var error,
-                    blogApp = express(),
                     shortCircuit = 'don\'t bother finishing initialization in this test';
-                sinon.stub(blogApp, 'use').throws(shortCircuit);
+                useStub.throws(shortCircuit);
 
                 try {
-                    setupMiddleware(blogApp, express());
+                    setupMiddleware(blogApp, adminApp);
                 } catch (e) {
                     error = e;
                 }
 
                 error.name.should.equal(shortCircuit);
-                blogApp.use.calledOnce.should.be.true;
-                blogApp.use.args[0][0].should.equal(middleware.setSubdirPath);
+                useStub.calledOnce.should.be.true;
+                useStub.args[0][0].should.equal(middleware.setSubdirPath);
+            });
+
+            describe('handles generate404s in the config', function () {
+                it('should configure errors.error404 as middleware when config key missing', function (done) {
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error404).should.be.true;
+                    done();
+                });
+
+                it('should configure errors.error404 as middleware when true', function (done) {
+                    config.generate404s = true;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error404).should.be.true;
+                    done();
+                });
+
+                it('should NOT configure errors.error404 as middleware when false', function (done) {
+                    config.generate404s = false;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error404).should.be.false;
+                    done();
+                });
+            });
+
+            describe('handles generate500s in the config', function () {
+                it('should configure errors.error500 as middleware when config key missing', function (done) {
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error500).should.be.true;
+                    done();
+                });
+
+                it('should configure errors.error500 as middleware when true', function (done) {
+                    config.generate500s = true;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error500).should.be.true;
+                    done();
+                });
+
+                it('should NOT configure errors.error500 as middleware when false', function (done) {
+                    config.generate500s = false;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error500).should.be.false;
+                    done();
+                });
             });
         });
     });

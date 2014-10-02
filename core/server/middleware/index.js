@@ -243,12 +243,18 @@ function serveSharedFile(file, type, maxAge) {
 }
 
 function setPathsFromMountpath(req, res, next) {
-    var path = blogApp.mountpath;
+    var url,
+        path = blogApp.mountpath;
     path = (path === '/') ? '' : path;
-    config._config.url = path;
-    config.url = path;
     config.paths.subdir = path;
-    config.theme.url = path;
+
+    url = req.protocol + '://' +
+        req.get('Host') +
+        req.baseUrl;
+
+    config._config.url = url;
+    config.url = url;
+    config.theme.url = url;
     next();
 }
 

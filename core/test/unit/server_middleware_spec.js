@@ -308,12 +308,20 @@ describe('Middleware', function () {
     });
 
     describe('setPathsFromMountpath middleware', function () {
-        var setPathsFromMountpath, nextStub, config;
+        var setPathsFromMountpath, nextStub, config, newPath, mockRequest, expectedUrl;
 
         beforeEach(function () {
             setPathsFromMountpath = middleware.setPathsFromMountpath;
             nextStub = sinon.stub();
             config = setupMiddleware.__get__('config');
+
+            newPath = '/our/site/blog';
+            mockRequest = {
+                protocol: 'proto',
+                baseUrl: newPath,
+                get: function () { return 'locohostle:42'; }
+            };
+            expectedUrl = 'proto://locohostle:42/our/site/blog';
         });
 
         afterEach(function () {
@@ -321,21 +329,19 @@ describe('Middleware', function () {
         });
 
         it('copies from blogApp.mountpath to config fields', function () {
-            var newPath = '/our/site/blog';
-
             setupMiddleware.__set__('blogApp', {mountpath: newPath});
             config.paths.subdir.should.not.equal(newPath);
 
-            setPathsFromMountpath({}, {}, nextStub);
+            setPathsFromMountpath(mockRequest, {}, nextStub);
             config.paths.subdir.should.equal(newPath);
-            config.theme.url.should.equal(newPath);
-            config.url.should.equal(newPath);
-            config._config.url.should.equal(newPath);
+            config.theme.url.should.equal(expectedUrl);
+            config.url.should.equal(expectedUrl);
+            config._config.url.should.equal(expectedUrl);
         });
 
         it('makes subdir empty if the mountpath is root', function () {
             setupMiddleware.__set__('blogApp', {mountpath: '/'});
-            setPathsFromMountpath({}, {}, nextStub);
+            setPathsFromMountpath(mockRequest, {}, nextStub);
             config.paths.subdir.should.equal('');
         });
     });

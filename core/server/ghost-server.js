@@ -1,7 +1,5 @@
 var Promise = require('bluebird'),
     fs = require('fs'),
-    semver = require('semver'),
-    packageInfo = require('../../package.json'),
     errors = require('./errors'),
     config = require('./config');
 
@@ -48,20 +46,6 @@ GhostServer.prototype.closeConnections = function () {
 };
 
 GhostServer.prototype.logStartMessages = function () {
-    // Tell users if their node version is not supported, and exit
-    if (!semver.satisfies(process.versions.node, packageInfo.engines.node)) {
-        console.log(
-            '\nERROR: Unsupported version of Node'.red,
-            '\nGhost needs Node version'.red,
-            packageInfo.engines.node.yellow,
-            'you are using version'.red,
-            process.versions.node.yellow,
-            '\nPlease go to http://nodejs.org to get a supported version'.green
-        );
-
-        process.exit(0);
-    }
-
     // Startup & Shutdown messages
     if (process.env.NODE_ENV === 'production') {
         console.log(

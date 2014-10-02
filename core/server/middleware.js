@@ -1,3 +1,5 @@
+require('./utils/startup-check').check();
+
 var _      = require('lodash'),
     config = require('./config'),
     ghost  = require('./index');

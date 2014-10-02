@@ -1,7 +1,10 @@
-var packages = require('../../../package.json'),
+var semver = require('semver'),
+    packages = require('../../../package.json'),
     path = require('path'),
     crypto = require('crypto'),
     fs = require('fs'),
+    errors = require('../errors'),            // jshint ignore:line
+
     mode = process.env.NODE_ENV === undefined ? 'development' : process.env.NODE_ENV,
     appRoot = path.resolve(__dirname, '../../../'),
     configFilePath = process.env.GHOST_CONFIG || path.join(appRoot, 'config.js'),
@@ -9,9 +12,26 @@ var packages = require('../../../package.json'),
 
 checks = {
     check: function check() {
+        this.nodeVersion();
         this.packages();
         this.contentPath();
         this.sqlite();
+    },
+
+    // Tell users if their node version is not supported, and exit
+    nodeVersion: function checkNodeVersion() {
+        if (!semver.satisfies(process.versions.node, packages.engines.node)) {
+            console.log(
+                '\nERROR: Unsupported version of Node'.red,
+                '\nGhost needs Node version'.red,
+                packages.engines.node.yellow,
+                'you are using version'.red,
+                process.versions.node.yellow,
+                '\nPlease go to http://nodejs.org to get a supported version'.green
+            );
+
+            process.exit(0);
+        }
     },
 
     // Make sure package.json dependencies have been installed.

@@ -178,11 +178,9 @@ function setupFromConfigPromise(configurationPromise) {
         // return the correct mime type for woff filess
         express['static'].mime.define({'application/font-woff': ['woff']});
 
-        if (config.server) {
-            // enabled gzip compression by default
-            if (config.server.compress !== false) {
-                blogApp.use(compress());
-            }
+        // enabled gzip compression by default
+        if (config.server && config.server.compress !== false) {
+            blogApp.use(compress());
         }
 
         // ## View engine

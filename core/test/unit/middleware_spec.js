@@ -1,6 +1,7 @@
 /*globals describe, it, beforeEach */
 /*jshint expr:true*/
-var should          = require('should'),
+var Promise         = require('bluebird'),
+    should          = require('should'),
     _               = require('lodash'),
     rewire          = require('rewire'),
     GhostServer     = require('../../server/ghost-server'),
@@ -35,7 +36,7 @@ describe('Express middleware module', function () {
     // alternatively we could stub server/index#setupFromConfigPromise or there-abouts, but
     //   for just two tests, the performance gain doesn't seem worth the loss of coverage
     function waitForTheConfigurationPromiseToResolve(middlewareInstance, done) {
-        var promise = middlewareInstance.getGhostPromise();
+        var promise = middlewareInstance.ghostPromise;
         promise.then(function () {
             done();
         }).catch(function (error) {
@@ -56,13 +57,13 @@ describe('Express middleware module', function () {
 
     it('extends the middleware instance to provide access to Ghost\'s initialization promise', function (done) {
         var middlewareInstance = middleware(defaultConfig);
-        middlewareInstance.getGhostPromise.should.be.a.Function;
+        middlewareInstance.ghostPromise.should.be.an.instanceOf(Promise);
 
         waitForTheConfigurationPromiseToResolve(middlewareInstance, done);
     });
 
     it('asynchronously initializes the middleware', function (done) {
-        var ghostInitializationPromise = middleware(defaultConfig).getGhostPromise();
+        var ghostInitializationPromise = middleware(defaultConfig).ghostPromise;
         ghostInitializationPromise.then(function (ghostServerInstance) {
             ghostServerInstance.should.be.an.instanceOf(GhostServer);
             done();

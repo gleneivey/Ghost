@@ -16,9 +16,7 @@ function buildServer(configValues) {
     setupResults = ghost.setupMiddleware(promise);
     ghostPromise = setupResults[0];
     middlewareInstance = setupResults[1];
-    middlewareInstance.getGhostPromise = function () {
-        return ghostPromise;
-    };
+    middlewareInstance.ghostPromise = ghostPromise;
 
     return middlewareInstance;
 }

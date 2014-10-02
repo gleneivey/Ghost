@@ -71,6 +71,13 @@ describe('Express middleware module', function () {
         });
     });
 
+    it('it includes the "asMiddleware" flag in the configuration loaded', function (done) {
+        var middlewareInstance = middleware(defaultConfig);
+        middleware.__get__('config').asMiddleware.should.be.true;
+
+        waitForTheConfigurationPromiseToResolve(middlewareInstance, done);
+    });
+
     it('fails if it is given a bad configuration', function () {
         function createMiddlewareWithBadConfiguration() {
             return middleware({});

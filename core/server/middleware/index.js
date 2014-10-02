@@ -276,7 +276,7 @@ setupMiddleware = function (blogAppInstance, adminApp) {
     // (X-Forwarded-Proto header will be checked, if present)
     blogApp.enable('trust proxy');
 
-    if (!config.server) {
+    if (config.asMiddleware) {
         blogApp.use(setPathsFromMountpath);
     }
 

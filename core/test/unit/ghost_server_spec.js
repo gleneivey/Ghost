@@ -24,6 +24,7 @@ describe('GhostServer', function () {
             it('doesn\'t schedule a warning message', function () {
                 var ghost,
                     config = GhostServer.__get__('config');
+                config.asMiddleware = true;
                 delete config.server;
                 delete config.url;
 

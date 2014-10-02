@@ -1,9 +1,10 @@
-var config = require('./config'),
-    ghost = require('./index');
+var _      = require('lodash'),
+    config = require('./config'),
+    ghost  = require('./index');
 
 function buildServer(configValues) {
     var setupResults, message,
-        promise = config.init(configValues, 'middleware'),
+        promise = config.init(_.merge(configValues, {asMiddleware: true}), 'middleware'),
         ghostPromise, middlewareInstance;
 
     if (promise.isRejected()) {

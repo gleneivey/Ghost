@@ -55,7 +55,9 @@ describe('Middleware', function () {
             var sandbox, useStub, blogApp, adminApp, error404, error500;
 
             beforeEach(function () {
-                delete config.server;                        // be middleware
+                // be middleware
+                config.asMiddleware = true;
+                delete config.server;
 
                 blogApp = express();
                 adminApp = express();

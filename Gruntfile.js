@@ -161,6 +161,12 @@ var _              = require('lodash'),
                     options: {
                         node_env: 'testing'
                     }
+                },
+                testMiddleware: {
+                    options: {
+                        script: 'core/test/functional/middleware_test_app.js',
+                        node_env: 'testing'
+                    }
                 }
             },
 
@@ -985,6 +991,22 @@ var _              = require('lodash'),
         // the functional tests.
         grunt.registerTask('test-functional-setup', 'Run functional tests for setup',
             ['test-setup', 'cleanDatabase', 'express:test', 'spawnCasperJS:setup', 'express:test:stop']
+        );
+
+        // Same as previous two, except run the integration tests against an instance of Ghost as middleware mounted in another app
+        grunt.registerTask('test-middleware-functional-setup',
+            'Run "setup" functional tests (Casper JS) on Ghost configured as an Express middleware instance',
+            ['clean:test', 'setTestEnv', 'ensureConfig', 'cleanDatabase', 'express:testMiddleware', 'spawnCasperJS:setup',
+            'express:testMiddleware:stop']
+        );
+        grunt.registerTask('test-middleware-functional-client-and-frontend',
+            'Run functional tests (Casper JS) on Ghost configured as an Express middleware instance',
+            ['clean:test', 'setTestEnv', 'ensureConfig', 'cleanDatabase', 'express:testMiddleware', 'spawnCasperJS',
+            'express:testMiddleware:stop']
+        );
+        grunt.registerTask('test-middleware-functional',
+            'Run functional tests (Casper JS) on Ghost configured as an Express middleware instance',
+            ['test-middleware-functional-client-and-frontend', 'test-middleware-functional-setup']
         );
 
         // ### Coverage

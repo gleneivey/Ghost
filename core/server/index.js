@@ -28,12 +28,16 @@ function doFirstRun() {
         'Welcome to Ghost.',
         'You\'re running under the <strong>',
         process.env.NODE_ENV,
-        '</strong>environment.',
-
-        'Your URL is set to',
-        '<strong>' + config.url + '</strong>.',
-        'See <a href="http://support.ghost.org/" target="_blank">http://support.ghost.org</a> for instructions.'
+        '</strong>environment.'
     ];
+
+    if (config.url) {
+        firstRunMessage = firstRunMessage.concat([
+            'Your URL is set to',
+            '<strong>' + config.url + '</strong>.'
+        ]);
+    }
+    firstRunMessage.push('See <a href="http://support.ghost.org/" target="_blank">http://support.ghost.org</a> for instructions.');
 
     return api.notifications.add({notifications: [{
         type: 'info',

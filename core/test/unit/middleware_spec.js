@@ -67,17 +67,37 @@ describe('Express middleware module', function () {
         });
     });
 
-    describe('delays request handling until', function () {
+    describe('startup timing', function () {
         afterEach(function () {
             middleware = rewire('../../server/middleware');
         });
 
-        it('after the middleware is initialized', function (done) {
+        function makeWebRequest(expressInstance, done) {
+            expressInstance(
+                {path: '/', url: '/', params: {}, route: {}},
+                {
+                    locals: {}, render: done, redirect: done,
+                    setHeader: function () {}
+                },
+                done
+            );
+        }
+
+        it('handles web requests after startup (simple test)', function (done) {
+            var expressInsnace = middleware(defaultConfig),
+                ghostInitializationPromise = expressInsnace.ghostPromise;
+
+            makeWebRequest(expressInsnace, function () {
+                ghostInitializationPromise.isResolved().should.be.true;
+                done();
+            });
+        });
+
+        it('performs initialization and request handling in exactly the right order', function (done) {
             var ghostInstance,
                 ghostInitializationPromise,
                 serverConfigPromise,
                 serverConfigResolver,
-                req, res,
                 mockServer,
 
                 expectedMountpath = '/a/mount/path',
@@ -134,13 +154,8 @@ describe('Express middleware module', function () {
             }
 
             //   -- next, simulate a request coming to us through the parent Express app
-            req = {path: '/', url: '/', params: {}, route: {}};
-            res = {
-                locals: {},
-                setHeader: function () {}
-            };
+            makeWebRequest(ghostInstance, assertionsAtEnd);
             sequenceOfOperations.push('made request');
-            ghostInstance(req, res, assertionsAtEnd);
 
             //   -- then, allow Ghost's initialization process to complete
             sequenceOfOperations.push('finished long-running initialization step');

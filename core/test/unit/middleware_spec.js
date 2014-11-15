@@ -1,7 +1,7 @@
-/*globals describe, it, beforeEach */
+/*globals describe, it, beforeEach, afterEach */
 /*jshint expr:true*/
 var Promise         = require('bluebird'),
-    should          = require('should'),
+    should          = require('should'),                           // jshint ignore:line
     _               = require('lodash'),
     rewire          = require('rewire'),
     GhostServer     = require('../../server/ghost-server'),
@@ -9,13 +9,8 @@ var Promise         = require('bluebird'),
     // Thing we are testing
     middleware      = rewire('../../server/middleware');
 
-// To stop jshint complaining
-should.equal(true, true);
-
 describe('Express middleware module', function () {
-    var defaultConfig = {
-        database: {client: 'sqlite3'}
-    };
+    var defaultConfig = {database: {client: 'sqlite3'}};
 
     function cleanOutConfigManager() {
         var middlewaresConfig = middleware.__get__('config');
@@ -69,6 +64,87 @@ describe('Express middleware module', function () {
             done();
         }).catch(function (error) {
             error.should.be.null;
+        });
+    });
+
+    describe('delays request handling until', function () {
+        afterEach(function () {
+            middleware = rewire('../../server/middleware');
+        });
+
+        it('after the middleware is initialized', function (done) {
+            var ghostInstance,
+                ghostInitializationPromise,
+                serverConfigPromise,
+                serverConfigResolver,
+                req, res,
+                mockServer,
+
+                expectedMountpath = '/a/mount/path',
+                expectedExpressParent = function () {},
+
+            // build a log of the order in which events actually occurred
+                sequenceOfOperations = [];
+
+            // set stubs and spies to log events occurring within Ghost
+            //   (ones that go into Ghost's dependencies)
+            middleware.__set__('logStartMessages', function () {
+                sequenceOfOperations.push('logged start message');
+            });
+            serverConfigPromise = new Promise(function (fn) {
+                serverConfigResolver = function () { fn(); };
+            });
+            middleware.__get__('config').init = function () { return serverConfigPromise; };
+            mockServer = function (req, res, next) {
+                mockServer.mountpath.should.equal(expectedMountpath);
+                mockServer.parent.should.equal(expectedExpressParent);
+
+                sequenceOfOperations.push('handled request');
+                next();
+            };
+            middleware.__get__('ghost').setupMiddleware = function (configInfoPromise) {
+                var allDonePromise = configInfoPromise.then(function () { });
+                return [allDonePromise, mockServer];
+            };
+
+            // generate 'from outside of Ghost' activity in order for situation under test
+            //   -- first, start Ghost initializing
+            sequenceOfOperations.push('started initialization');
+            ghostInstance = middleware(defaultConfig);
+            ghostInstance.mountpath = expectedMountpath;
+            ghostInstance.parent = expectedExpressParent;
+            ghostInitializationPromise = ghostInstance.ghostPromise;
+
+            // set stubs and spies to log events occurring within Ghost
+            //   (ones attached the middleware instance itself)
+            ghostInitializationPromise.then(function () {
+                sequenceOfOperations.push('finished initialization');
+            });
+            function assertionsAtEnd() {
+                // verify that Ghost did its bits at the right points in the sequence
+                sequenceOfOperations.should.eql([
+                    'started initialization',
+                    'made request',
+                    'finished long-running initialization step',
+                    'logged start message',
+                    'finished initialization',
+                    'handled request'
+                ]);
+                done();
+            }
+
+            //   -- next, simulate a request coming to us through the parent Express app
+            req = {path: '/', url: '/', params: {}, route: {}};
+            res = {
+                locals: {},
+                setHeader: function () {}
+            };
+            sequenceOfOperations.push('made request');
+            ghostInstance(req, res, assertionsAtEnd);
+
+            //   -- then, allow Ghost's initialization process to complete
+            sequenceOfOperations.push('finished long-running initialization step');
+            serverConfigResolver();
         });
     });
 

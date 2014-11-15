@@ -1,8 +1,9 @@
 require('./utils/startup-check').check();
 
-var _      = require('lodash'),
-    config = require('./config'),
-    ghost  = require('./index');
+var express = require('express'),
+    _       = require('lodash'),
+    config  = require('./config'),
+    ghost   = require('./index');
 
 function logStartMessages() {
     console.log('Ghost middleware configured and ready to serve requests'.green);
@@ -14,7 +15,9 @@ function logStartMessages() {
 function buildServer(configValues) {
     var setupResults, message,
         promise = config.init(_.merge(configValues, {asMiddleware: true}), 'middleware'),
-        ghostPromise, middlewareInstance;
+        ghostPromise,
+        actualGhostInstance,
+        startupTimingWrapper;
 
     if (promise.isRejected()) {
         message = promise.reason();
@@ -24,12 +27,24 @@ function buildServer(configValues) {
 
     setupResults = ghost.setupMiddleware(promise);
     ghostPromise = setupResults[0];
-    middlewareInstance = setupResults[1];
-    middlewareInstance.ghostPromise = ghostPromise;
+    actualGhostInstance = setupResults[1];
 
     ghostPromise.then(logStartMessages);
+    startupTimingWrapper = express();
+    startupTimingWrapper.use(
+        function (req, res, next) {
+            ghostPromise.then(function () {
+                // let Ghost know where it's really mounted
+                actualGhostInstance.mountpath = startupTimingWrapper.mountpath;
+                actualGhostInstance.parent = startupTimingWrapper.parent;
 
-    return middlewareInstance;
+                actualGhostInstance(req, res, next);
+            });
+        }
+    );
+
+    startupTimingWrapper.ghostPromise = ghostPromise;
+    return startupTimingWrapper;
 }
 
 module.exports = buildServer;

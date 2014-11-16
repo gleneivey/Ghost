@@ -1,6 +1,6 @@
 // # Custom Middleware
 // The following custom middleware functions cannot yet be unit tested, and as such are kept separate from
-// the testable custom middleware functions in middleware.js
+// the testable custom middleware functions in ./middleware.js
 
 var api            = require('../api'),
     bodyParser     = require('body-parser'),

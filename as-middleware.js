@@ -1,9 +1,9 @@
-require('./utils/startup-check').check();
+require('./core/server/utils/startup-check').check();
 
 var express = require('express'),
     _       = require('lodash'),
-    config  = require('./config'),
-    ghost   = require('./index');
+    config  = require('./core/server/config'),
+    ghost   = require('./core/server');
 
 function logStartMessages() {
     console.log('Ghost middleware configured and ready to serve requests'.green);

@@ -1,6 +1,6 @@
 // # Custom Middleware
 // The following custom middleware functions are all unit testable, and have accompanying unit tests in
-// server_middleware_spec.js
+// middleware_spec.js
 
 var _           = require('lodash'),
     express     = require('express'),

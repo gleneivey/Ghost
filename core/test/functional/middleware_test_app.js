@@ -1,5 +1,5 @@
 var express = require('express'),
-    ghost = require('../../server/middleware'),
+    ghost = require('../../../as-middleware'),
 
     ghostConfig = require('../../../config.example.js')[process.env.NODE_ENV],
     host = ghostConfig.server.host,

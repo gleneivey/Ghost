@@ -1,181 +1,360 @@
-/*globals describe, it, beforeEach, afterEach */
+/*globals describe, beforeEach, afterEach, it*/
 /*jshint expr:true*/
-var Promise         = require('bluebird'),
-    should          = require('should'),                           // jshint ignore:line
-    _               = require('lodash'),
+var express         = require('express'),
+    assert          = require('assert'),
+    should          = require('should'),
+    sinon           = require('sinon'),
     rewire          = require('rewire'),
-    GhostServer     = require('../../server/ghost-server'),
+    _               = require('lodash'),
+    defaultConfig   = require('../../../config.example')[process.env.NODE_ENV],
 
     // Thing we are testing
-    middleware      = rewire('../../server/middleware');
+    setupMiddleware = rewire('../../server/middleware/index'),
+    middleware      = setupMiddleware.middleware;
 
-describe('Express middleware module', function () {
-    var defaultConfig = {database: {client: 'sqlite3'}};
+describe('Middleware', function () {
+    var sandbox;
+    beforeEach(function () { sandbox = sinon.sandbox.create(); });
+    afterEach(function () { sandbox.restore(); });
 
-    function cleanOutConfigManager() {
-        var middlewaresConfig = middleware.__get__('config');
-        _(_.keys(middlewaresConfig._config)).each(function (key) {
-            delete middlewaresConfig[key];
+    // TODO: needs new test for ember admin
+    // describe('redirectToDashboard', function () {
+    //     var req, res;
+
+    //     beforeEach(function () {
+    //         req = {
+    //             session: {}
+    //         };
+
+    //         res = {
+    //             redirect: sinon.spy()
+    //         };
+    //     });
+
+    //     it('should redirect to dashboard', function () {
+    //         req.session.user = {};
+
+    //         middleware.redirectToDashboard(req, res, null);
+    //         assert(res.redirect.calledWithMatch('/ghost/'));
+    //     });
+
+    //     it('should call next if no user in session', function (done) {
+    //         middleware.redirectToDashboard(req, res, function (a) {
+    //             should.not.exist(a);
+    //             assert(res.redirect.calledOnce.should.be.false);
+    //             done();
+    //         });
+    //     });
+    // });
+
+    describe('setupMiddleware', function () {
+        var config;
+
+        beforeEach(function () {
+            config = setupMiddleware.__get__('config');
+            config.set(_.merge({}, defaultConfig));      // isolate us from previously-run unit test file(s)
         });
-        middlewaresConfig._config = {};
-    }
 
-    function shouldBeAnInstanceOfExpress(express) {
-        // first-order duck typing for an express server
-        express.should.be.a.function;
-        express.length.should.equal(3, 'a real express server function has an arity of 3');
-        express.request.should.be.an.object;
-        express.response.should.be.an.object;
-    }
+        describe('when Ghost is used as an Express middleware component itself', function () {
+            var useStub, blogApp, adminApp, error404, error500;
 
-    // alternatively we could stub server/index#setupFromConfigPromise or there-abouts, but
-    //   for just two tests, the performance gain doesn't seem worth the loss of coverage
-    function waitForTheConfigurationPromiseToResolve(middlewareInstance, done) {
-        var promise = middlewareInstance.ghostPromise;
-        promise.then(function () {
-            done();
-        }).catch(function (error) {
-            error.should.equal('In this test, the promise should never be rejected.');
+            beforeEach(function () {
+                // be middleware
+                config.asMiddleware = true;
+                delete config.server;
+
+                blogApp = express();
+                adminApp = express();
+                error404 = setupMiddleware.__get__('errors').error404;
+                error500 = setupMiddleware.__get__('errors').error500;
+
+                useStub = sandbox.stub(blogApp, 'use');
+                sandbox.stub(setupMiddleware.__get__('oauth'), 'init');  // would need lots more setup to run in tests
+            });
+
+            it('installs setPathsFromMountpath as the very first middleware used', function () {
+                var error,
+                    shortCircuit = 'don\'t bother finishing initialization in this test';
+                useStub.throws(shortCircuit);
+
+                try {
+                    setupMiddleware(blogApp, adminApp);
+                } catch (e) {
+                    error = e;
+                }
+
+                error.name.should.equal(shortCircuit);
+                useStub.calledOnce.should.be.true;
+                useStub.args[0][0].should.equal(middleware.setPathsFromMountpath);
+            });
+
+            describe('handles generate404s in the config', function () {
+                it('should configure errors.error404 as middleware when config key missing', function (done) {
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error404).should.be.true;
+                    done();
+                });
+
+                it('should configure errors.error404 as middleware when true', function (done) {
+                    config.generate404s = true;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error404).should.be.true;
+                    done();
+                });
+
+                it('should NOT configure errors.error404 as middleware when false', function (done) {
+                    config.generate404s = false;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error404).should.be.false;
+                    done();
+                });
+            });
+
+            describe('handles generate500s in the config', function () {
+                it('should configure errors.error500 as middleware when config key missing', function (done) {
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error500).should.be.true;
+                    done();
+                });
+
+                it('should configure errors.error500 as middleware when true', function (done) {
+                    config.generate500s = true;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error500).should.be.true;
+                    done();
+                });
+
+                it('should NOT configure errors.error500 as middleware when false', function (done) {
+                    config.generate500s = false;
+                    setupMiddleware(blogApp, adminApp);
+                    useStub.calledWith(error500).should.be.false;
+                    done();
+                });
+            });
         });
-    }
-
-    beforeEach(function () {
-        cleanOutConfigManager();
     });
 
-    it('returns an Express server instance when called', function (done) {
-        var middlewareInstance = middleware(defaultConfig);
-        shouldBeAnInstanceOfExpress(middlewareInstance);
+    describe('cacheControl', function () {
+        var res;
 
-        waitForTheConfigurationPromiseToResolve(middlewareInstance, done);
-    });
+        beforeEach(function () {
+            res = {
+                set: sinon.spy()
+            };
+        });
 
-    it('extends the middleware instance to provide access to Ghost\'s initialization promise', function (done) {
-        var middlewareInstance = middleware(defaultConfig);
-        middlewareInstance.ghostPromise.should.be.an.instanceOf(Promise);
+        it('correctly sets the public profile headers', function (done) {
+            middleware.cacheControl('public')(null, res, function (a) {
+                should.not.exist(a);
+                res.set.calledOnce.should.be.true;
+                res.set.calledWith({'Cache-Control': 'public, max-age=0'});
+                done();
+            });
+        });
 
-        waitForTheConfigurationPromiseToResolve(middlewareInstance, done);
-    });
+        it('correctly sets the private profile headers', function (done) {
+            middleware.cacheControl('private')(null, res, function (a) {
+                should.not.exist(a);
+                res.set.calledOnce.should.be.true;
+                res.set.calledWith({
+                    'Cache-Control':
+                        'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0'
+                });
+                done();
+            });
+        });
 
-    it('asynchronously initializes the middleware', function (done) {
-        var ghostInitializationPromise = middleware(defaultConfig).ghostPromise;
-        ghostInitializationPromise.then(function (ghostServerInstance) {
-            ghostServerInstance.should.be.an.instanceOf(GhostServer);
-            done();
-        }).catch(function (error) {
-            error.should.be.null;
+        it('will not set headers without a profile', function (done) {
+            middleware.cacheControl()(null, res, function (a) {
+                should.not.exist(a);
+                res.set.called.should.be.false;
+                done();
+            });
         });
     });
 
-    describe('startup timing', function () {
+    describe('whenEnabled', function () {
+        var cbFn, blogApp;
+
+        beforeEach(function () {
+            cbFn = sinon.spy();
+            blogApp = {
+                enabled: function (setting) {
+                    if (setting === 'enabled') {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            };
+            middleware.cacheBlogApp(blogApp);
+        });
+
+        it('should call function if setting is enabled', function (done) {
+            var req = 1, res = 2, next = 3;
+
+            middleware.whenEnabled('enabled', function (a, b, c) {
+                assert.equal(a, 1);
+                assert.equal(b, 2);
+                assert.equal(c, 3);
+                done();
+            })(req, res, next);
+        });
+
+        it('should call next() if setting is disabled', function (done) {
+            middleware.whenEnabled('rando', cbFn)(null, null, function (a) {
+                should.not.exist(a);
+                cbFn.calledOnce.should.be.false;
+                done();
+            });
+        });
+    });
+
+    describe('staticTheme', function () {
+        beforeEach(function () {
+            sandbox.stub(middleware, 'forwardToExpressStatic').yields();
+        });
+
         afterEach(function () {
-            middleware = rewire('../../server/middleware');
+            middleware.forwardToExpressStatic.restore();
         });
 
-        function makeWebRequest(expressInstance, done) {
-            expressInstance(
-                {path: '/', url: '/', params: {}, route: {}},
-                {
-                    locals: {}, render: done, redirect: done,
-                    setHeader: function () {}
-                },
-                done
-            );
-        }
+        it('should call next if hbs file type', function (done) {
+            var req = {
+                url: 'mytemplate.hbs'
+            };
 
-        it('handles web requests after startup (simple test)', function (done) {
-            var expressInsnace = middleware(defaultConfig),
-                ghostInitializationPromise = expressInsnace.ghostPromise;
-
-            makeWebRequest(expressInsnace, function () {
-                ghostInitializationPromise.isResolved().should.be.true;
+            middleware.staticTheme(null)(req, null, function (a) {
+                should.not.exist(a);
+                middleware.forwardToExpressStatic.calledOnce.should.be.false;
                 done();
             });
         });
 
-        it('performs initialization and request handling in exactly the right order', function (done) {
-            var ghostInstance,
-                ghostInitializationPromise,
-                serverConfigPromise,
-                serverConfigResolver,
-                mockServer,
-
-                expectedMountpath = '/a/mount/path',
-                expectedExpressParent = function () {},
-
-            // build a log of the order in which events actually occurred
-                sequenceOfOperations = [];
-
-            // set stubs and spies to log events occurring within Ghost
-            //   (ones that go into Ghost's dependencies)
-            middleware.__set__('logStartMessages', function () {
-                sequenceOfOperations.push('logged start message');
-            });
-            serverConfigPromise = new Promise(function (fn) {
-                serverConfigResolver = function () { fn(); };
-            });
-            middleware.__get__('config').init = function () { return serverConfigPromise; };
-            mockServer = function (req, res, next) {
-                mockServer.mountpath.should.equal(expectedMountpath);
-                mockServer.parent.should.equal(expectedExpressParent);
-
-                sequenceOfOperations.push('handled request');
-                next();
-            };
-            middleware.__get__('ghost').setupMiddleware = function (configInfoPromise) {
-                var allDonePromise = configInfoPromise.then(function () { });
-                return [allDonePromise, mockServer];
+        it('should call next if md file type', function (done) {
+            var req = {
+                url: 'README.md'
             };
 
-            // generate 'from outside of Ghost' activity in order for situation under test
-            //   -- first, start Ghost initializing
-            sequenceOfOperations.push('started initialization');
-            ghostInstance = middleware(defaultConfig);
-            ghostInstance.mountpath = expectedMountpath;
-            ghostInstance.parent = expectedExpressParent;
-            ghostInitializationPromise = ghostInstance.ghostPromise;
-
-            // set stubs and spies to log events occurring within Ghost
-            //   (ones attached the middleware instance itself)
-            ghostInitializationPromise.then(function () {
-                sequenceOfOperations.push('finished initialization');
-            });
-            function assertionsAtEnd() {
-                // verify that Ghost did its bits at the right points in the sequence
-                sequenceOfOperations.should.eql([
-                    'started initialization',
-                    'made request',
-                    'finished long-running initialization step',
-                    'logged start message',
-                    'finished initialization',
-                    'handled request'
-                ]);
+            middleware.staticTheme(null)(req, null, function (a) {
+                should.not.exist(a);
+                middleware.forwardToExpressStatic.calledOnce.should.be.false;
                 done();
-            }
+            });
+        });
 
-            //   -- next, simulate a request coming to us through the parent Express app
-            makeWebRequest(ghostInstance, assertionsAtEnd);
-            sequenceOfOperations.push('made request');
+        it('should call next if json file type', function (done) {
+            var req = {
+                url: 'sample.json'
+            };
 
-            //   -- then, allow Ghost's initialization process to complete
-            sequenceOfOperations.push('finished long-running initialization step');
-            serverConfigResolver();
+            middleware.staticTheme(null)(req, null, function (a) {
+                should.not.exist(a);
+                middleware.forwardToExpressStatic.calledOnce.should.be.false;
+                done();
+            });
+        });
+
+        it('should call express.static if valid file type', function (done) {
+            var req = {
+                    url: 'myvalidfile.css'
+                };
+
+            middleware.staticTheme(null)(req, null, function (reqArg, res, next) {
+                /*jshint unused:false */
+                middleware.forwardToExpressStatic.calledOnce.should.be.true;
+                assert.deepEqual(middleware.forwardToExpressStatic.args[0][0], req);
+                done();
+            });
         });
     });
 
-    it('it includes the "asMiddleware" flag in the configuration loaded', function (done) {
-        var middlewareInstance = middleware(defaultConfig);
-        middleware.__get__('config').asMiddleware.should.be.true;
+    describe('checkSSL middleware', function () {
+        var checkSSL = middleware.checkSSL,
+            redirectCalled, nextCalled,
+            mockResponse,
+            nextFunction = function () { nextCalled = true; };
 
-        waitForTheConfigurationPromiseToResolve(middlewareInstance, done);
+        beforeEach(function () {
+            redirectCalled = nextCalled = false;
+            mockResponse = {
+                redirect: function () { redirectCalled = true; }
+            };
+        });
+
+        it('passes the request on if it receives an HTTPS request', function () {
+            var mockRequest = {secure: true};
+            checkSSL(mockRequest, mockResponse, nextFunction);
+            nextCalled.should.be.true;
+            redirectCalled.should.be.false;
+        });
+
+        describe('receiving a non-SSL request', function () {
+            var mockRequest = {secure: false};
+
+            it('redirects to HTTPS if it is configured with an "https" url', function () {
+                setupMiddleware.__get__('config').url = 'https://127.0.0.1:2369';
+                checkSSL(mockRequest, mockResponse, nextFunction);
+                nextCalled.should.be.false;
+                redirectCalled.should.be.true;
+            });
+
+            it('passes the request on if there is no "url" in the configuration', function () {
+                delete setupMiddleware.__get__('config').url;
+                checkSSL(mockRequest, mockResponse, nextFunction);
+                nextCalled.should.be.true;
+                redirectCalled.should.be.false;
+            });
+        });
     });
 
-    it('fails if it is given a bad configuration', function () {
-        function createMiddlewareWithBadConfiguration() {
-            return middleware({});
-        }
+    describe('setPathsFromMountpath middleware', function () {
+        var setPathsFromMountpath, nextStub, config, mockRequest, newPath,
+            restoreUrl, restoreConfigUrl, restoreThemeUrl;
 
-        createMiddlewareWithBadConfiguration.should.throw('invalid database configuration');
+        beforeEach(function () {
+            setPathsFromMountpath = middleware.setPathsFromMountpath;
+            nextStub = sinon.stub();
+            config = setupMiddleware.__get__('config');
+            newPath = '/our/site/blog';
+
+            mockRequest = {
+                protocol: 'proto',
+                baseUrl: newPath,
+                get: function () { return 'locohostle:42'; }
+            };
+
+            restoreConfigUrl = config._config.url;
+            restoreUrl = config.url;
+            restoreThemeUrl = config.theme.url;
+        });
+
+        afterEach(function () {
+            nextStub.called.should.be.true;
+
+            // restore global state for subsequent tests
+            config._config.url = restoreConfigUrl;
+            config.url = restoreUrl;
+            config.theme.url = restoreThemeUrl;
+        });
+
+        it('copies from blogApp.mountpath to config fields', function () {
+            var expectedUrl = 'proto://locohostle:42/our/site/blog';
+            setupMiddleware.__set__('blogApp', {mountpath: newPath});
+            config.paths.subdir.should.not.equal(newPath);
+
+            setPathsFromMountpath(mockRequest, {}, nextStub);
+            config.paths.subdir.should.equal(newPath);
+            config.theme.url.should.equal(expectedUrl);
+            config.url.should.equal(expectedUrl);
+            config._config.url.should.equal(expectedUrl);
+        });
+
+        it('makes subdir empty if the mountpath is root', function () {
+            setupMiddleware.__set__('blogApp', {mountpath: '/'});
+            setPathsFromMountpath(mockRequest, {}, nextStub);
+            config.paths.subdir.should.equal('');
+        });
     });
 
     describe('isSSLRequired', function () {

@@ -313,9 +313,14 @@ describe('Middleware', function () {
             restoreUrl, restoreConfigUrl, restoreThemeUrl;
 
         beforeEach(function () {
+            // overwrite so we have access to middleware module's internal config
+            middleware =
+                setupMiddleware.middleware =
+                    rewire('../../server/middleware/middleware');
+
             setPathsFromMountpath = middleware.setPathsFromMountpath;
             nextStub = sinon.stub();
-            config = setupMiddleware.__get__('config');
+            config = middleware.__get__('config');
             newPath = '/our/site/blog';
 
             mockRequest = {
@@ -340,7 +345,7 @@ describe('Middleware', function () {
 
         it('copies from blogApp.mountpath to config fields', function () {
             var expectedUrl = 'proto://locohostle:42/our/site/blog';
-            setupMiddleware.__set__('blogApp', {mountpath: newPath});
+            middleware.__set__('blogApp', {mountpath: newPath});
             config.paths.subdir.should.not.equal(newPath);
 
             setPathsFromMountpath(mockRequest, {}, nextStub);
@@ -351,7 +356,7 @@ describe('Middleware', function () {
         });
 
         it('makes subdir empty if the mountpath is root', function () {
-            setupMiddleware.__set__('blogApp', {mountpath: '/'});
+            middleware.__set__('blogApp', {mountpath: '/'});
             setPathsFromMountpath(mockRequest, {}, nextStub);
             config.paths.subdir.should.equal('');
         });

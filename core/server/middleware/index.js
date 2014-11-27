@@ -242,22 +242,6 @@ function serveSharedFile(file, type, maxAge) {
     };
 }
 
-function setPathsFromMountpath(req, res, next) {
-    var url,
-        path = blogApp.mountpath;
-    path = (path === '/') ? '' : path;
-    config.paths.subdir = path;
-
-    url = req.protocol + '://' +
-        req.get('Host') +
-        req.baseUrl;
-
-    config._config.url = url;
-    config.url = url;
-    config.theme.url = url;
-    next();
-}
-
 setupMiddleware = function (blogAppInstance, adminApp) {
     var logging = config.logging,
         corePath = config.paths.corePath,
@@ -277,7 +261,7 @@ setupMiddleware = function (blogAppInstance, adminApp) {
     blogApp.enable('trust proxy');
 
     if (config.asMiddleware) {
-        blogApp.use(setPathsFromMountpath);
+        blogApp.use(middleware.setPathsFromMountpath);
     }
 
     // Logging configuration
@@ -379,4 +363,3 @@ module.exports.middleware = middleware;
 // Expose middleware functions in this file as well
 module.exports.middleware.redirectToSetup = redirectToSetup;
 module.exports.middleware.checkSSL = checkSSL;
-module.exports.middleware.setPathsFromMountpath = setPathsFromMountpath;

@@ -303,6 +303,22 @@ middleware = {
         return oauthServer.token()(req, res, next);
     },
 
+    setPathsFromMountpath: function (req, res, next) {
+        var url,
+            path = blogApp.mountpath;
+        path = (path === '/') ? '' : path;
+        config.paths.subdir = path;
+
+        url = req.protocol + '://' +
+        req.get('Host') +
+        req.baseUrl;
+
+        config._config.url = url;
+        config.url = url;
+        config.theme.url = url;
+        next();
+    },
+
     busboy: busboy
 };
 

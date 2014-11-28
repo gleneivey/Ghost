@@ -304,14 +304,22 @@ middleware = {
     },
 
     setPathsFromMountpath: function (req, res, next) {
-        var url,
+        var host,
+            url,
             path = blogApp.mountpath;
         path = (path === '/') ? '' : path;
         config.paths.subdir = path;
 
-        url = req.protocol + '://' +
-        req.get('Host') +
-        req.baseUrl;
+        if (req.get('x-forwarded-host')) {
+            host = req.get('x-forwarded-host');
+            if (req.get('x-forwarded-port')) {
+                host += ':' + req.get('x-forwarded-port');
+            }
+        } else {
+            host = req.get('Host');
+        }
+
+        url = req.protocol + '://' + host + req.baseUrl;
 
         config._config.url = url;
         config.url = url;

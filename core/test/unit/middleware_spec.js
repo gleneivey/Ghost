@@ -309,7 +309,8 @@ describe('Middleware', function () {
     });
 
     describe('setPathsFromMountpath middleware', function () {
-        var setPathsFromMountpath, nextStub, config, mockRequest, newPath,
+        var setPathsFromMountpath, nextStub, config, mockRequest,
+            newPath, expectedUrl,
             restoreUrl, restoreConfigUrl, restoreThemeUrl;
 
         beforeEach(function () {
@@ -326,8 +327,14 @@ describe('Middleware', function () {
             mockRequest = {
                 protocol: 'proto',
                 baseUrl: newPath,
-                get: function () { return 'locohostle:42'; }
+                headers: {
+                    host: 'locohostle:42'
+                },
+                get: function (key) {
+                    return mockRequest.headers[key.toLowerCase()];
+                }
             };
+            expectedUrl = 'proto://locohostle:42/our/site/blog';
 
             restoreConfigUrl = config._config.url;
             restoreUrl = config.url;
@@ -337,6 +344,10 @@ describe('Middleware', function () {
         afterEach(function () {
             nextStub.called.should.be.true;
 
+            config.theme.url.should.equal(expectedUrl);
+            config.url.should.equal(expectedUrl);
+            config._config.url.should.equal(expectedUrl);
+
             // restore global state for subsequent tests
             config._config.url = restoreConfigUrl;
             config.url = restoreUrl;
@@ -344,15 +355,31 @@ describe('Middleware', function () {
         });
 
         it('copies from blogApp.mountpath to config fields', function () {
-            var expectedUrl = 'proto://locohostle:42/our/site/blog';
             middleware.__set__('blogApp', {mountpath: newPath});
             config.paths.subdir.should.not.equal(newPath);
 
             setPathsFromMountpath(mockRequest, {}, nextStub);
             config.paths.subdir.should.equal(newPath);
-            config.theme.url.should.equal(expectedUrl);
-            config.url.should.equal(expectedUrl);
-            config._config.url.should.equal(expectedUrl);
+        });
+
+        it('uses "x-forwarded-host" instead of "host" from headers, when present', function () {
+            expectedUrl = 'proto://proxied.com/our/site/blog';
+            mockRequest.headers['x-forwarded-host'] = 'proxied.com';
+            middleware.__set__('blogApp', {mountpath: newPath});
+
+            setPathsFromMountpath(mockRequest, {}, nextStub);
+            config.paths.subdir.should.equal(newPath);
+        });
+
+        it('uses "x-forwarded-host" AND "x-forwarded-port" when both are present', function () {
+            expectedUrl = 'https://proxied.com:8080/our/site/blog';
+            mockRequest.headers['x-forwarded-host'] = 'proxied.com';
+            mockRequest.headers['x-forwarded-port'] = '8080';
+            mockRequest.protocol = 'https';
+            middleware.__set__('blogApp', {mountpath: newPath});
+
+            setPathsFromMountpath(mockRequest, {}, nextStub);
+            config.paths.subdir.should.equal(newPath);
         });
 
         it('makes subdir empty if the mountpath is root', function () {

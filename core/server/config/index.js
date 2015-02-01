@@ -420,7 +420,7 @@ ConfigManager.prototype.displayDeprecated = function (item, properties, address)
     }
 };
 
-if (testingEnvs.indexOf(process.env.NODE_ENV) > -1) {
+if (testingEnvs.indexOf(process.env.NODE_ENV) > -1 && process.env.GHOST_NO_DEFAULT_CONFIG !== 'true') {
     defaultConfig  = require('../../../config.example')[process.env.NODE_ENV];
 }
 

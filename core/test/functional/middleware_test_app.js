@@ -7,6 +7,7 @@ var express = require('express'),
 
     app;
 
+// information Ghost should get from Express once it is mounted
 delete ghostConfig.server;
 delete ghostConfig.url;
 

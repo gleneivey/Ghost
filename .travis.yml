@@ -24,5 +24,6 @@ before_install:
   - if [ $DB == "mysql" ]; then mysql -e 'create database ghost_testing'; fi
   - if [ $DB == "pg" ]; then psql -c 'create database ghost_testing;' -U postgres; fi
 before_script:
+  - cat bower_components/ember-mocha/bower.json
   - phantomjs --version
   - casperjs --version

@@ -356,39 +356,41 @@ describe('Config', function () {
             }).catch(done);
         });
 
-        it('allows server to use a socket', function (done) {
-            overrideConfig({server: {socket: 'test'}});
+        describe('accepts a socket in server configuration', function () {
+            it('default permissions if not user-defined', function (done) {
+                overrideConfig({server: {socket: 'test'}});
 
-            config.load().then(function () {
-                var socketConfig = config.getSocket();
+                config.load().then(function () {
+                    var socketConfig = config.getSocket();
 
-                socketConfig.should.be.an.Object;
-                socketConfig.path.should.equal('test');
-                socketConfig.permissions.should.equal('660');
+                    socketConfig.should.be.an.Object;
+                    socketConfig.path.should.equal('test');
+                    socketConfig.permissions.should.equal('660');
 
-                done();
-            }).catch(done);
-        });
-
-        it('allows server to use a socket and user-defined permissions', function (done) {
-            overrideConfig({
-                server: {
-                    socket: {
-                        path: 'test',
-                        permissions: '666'
-                    }
-                }
+                    done();
+                }).catch(done);
             });
 
-            config.load().then(function () {
-                var socketConfig = config.getSocket();
+            it('supports user-defined permissions', function (done) {
+                overrideConfig({
+                    server: {
+                        socket: {
+                            path: 'test',
+                            permissions: '666'
+                        }
+                    }
+                });
 
-                socketConfig.should.be.an.Object;
-                socketConfig.path.should.equal('test');
-                socketConfig.permissions.should.equal('666');
+                config.load().then(function () {
+                    var socketConfig = config.getSocket();
 
-                done();
-            }).catch(done);
+                    socketConfig.should.be.an.Object;
+                    socketConfig.path.should.equal('test');
+                    socketConfig.permissions.should.equal('666');
+
+                    done();
+                }).catch(done);
+            });
         });
     });
 
@@ -485,16 +487,16 @@ describe('Config', function () {
                 });
             });
 
-            describe('allows', function () {
+            describe('allows server to ', function () {
                 afterEach(function () {
                     should(!!config.findErrors(testConfig, serverSetup)).not.be.ok;
                 });
 
-                it('allows server to use a socket', function () {
+                it('use a socket', function () {
                     testConfig = _.extend({}, defaultConfig, {server: {socket: 'test'}});
                 });
 
-                it('allows server to have a host and a port', function () {
+                it('have a host and a port', function () {
                     testConfig = _.extend({}, defaultConfig, {server: {host: '127.0.0.1', port: '2368'}});
                 });
             });

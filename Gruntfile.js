@@ -326,14 +326,6 @@ var _              = require('lodash'),
                     }
                 },
 
-                checkbower: {
-                    command: 'cat ' + path.resolve(cwd + '/bower_components/ember-mocha/bower.json'),
-                    options: {
-                        stdout: true,
-                        stdin: false
-                    }
-                },
-
                 testem: {
                     command: path.resolve(cwd + '/node_modules/.bin/testem ci -f core/test/client/testem.json'),
                     options: {
@@ -1184,7 +1176,7 @@ var _              = require('lodash'),
         // `bower` does have some quirks, such as not running as root. If you have problems please try running
         // `grunt init --verbose` to see if there are any errors.
         grunt.registerTask('init', 'Prepare the project for development',
-            ['shell:bower', 'shell:checkbower', 'update_submodules', 'default']);
+            ['shell:bower', 'update_submodules', 'default']);
 
         // ### Production assets
         // `grunt prod` - will build the minified assets used in production.
